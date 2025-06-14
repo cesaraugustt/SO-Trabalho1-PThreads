@@ -1,3 +1,6 @@
+# Ignorar a pasta de pacotes do NuGet
+packages/
+
 # Arquivos e pastas do Visual Studio
 .vs/
 *.suo
