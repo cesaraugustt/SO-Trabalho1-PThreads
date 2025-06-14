@@ -1,0 +1,19 @@
+# Arquivos e pastas do Visual Studio
+.vs/
+*.suo
+*.user
+*.sln.docstates
+
+# Arquivos de Build
+[Bb]in/
+[Dd]ebug/
+[Rr]elease/
+x64/
+
+# Arquivos gerados pela compilação
+*.obj
+*.exe
+*.pdb
+*.ilk
+*.lib
+*.dll
