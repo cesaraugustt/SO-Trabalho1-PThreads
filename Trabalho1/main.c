@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <math.h>
+#include <string.h>
 
 #define MATRIZ_ALTURA 10000
 #define MATRIZ_LARGURA 10000
@@ -26,7 +27,7 @@ pthread_mutex_t mutex_proximo_bloco;
 pthread_mutex_t mutex_total_primos;
 
 int** alocarMatriz(int altura, int largura) {
-	printf("Alocando matriz %dx%d\n", altura, largura);
+	printf("Alocando matriz %dx%d...\n", altura, largura);
 	int** mat = (int**)malloc(altura * sizeof(int*));
 
 	if (mat == NULL) {
@@ -47,7 +48,7 @@ int** alocarMatriz(int altura, int largura) {
 }
 
 void liberarMatriz(int** mat, int altura) {
-	printf("Liberando matriz\n");
+	printf("Liberando matriz...\n");
 	for (int i = 0; i < altura; i++) {
 		free(mat[i]);
 	}
@@ -56,7 +57,7 @@ void liberarMatriz(int** mat, int altura) {
 }
 
 void gerarMatrizAleatoria(int** mat, int altura, int largura, int semente) {
-	printf("Gerando numeros aleatorios para a matriz.\n");
+	printf("Gerando numeros aleatorios para a matriz...\n");
 	srand(semente); // Semente fixa
 	for (int i = 0; i < altura; i++) {
 		for (int j = 0; j < largura; j++) {
@@ -70,7 +71,8 @@ int verificarPrimo(int n) {
 	if (n <= 1) return 0;
 	if (n <= 3) return 1;
 
-	for (int i = 2; i * i <= n; i++) {
+	double limite = sqrt(n);
+	for (int i = 2; i <= limite; i++) {
 		// O loop continua enquanto i for menor ou igual a raiz quadrada de n.
 		if (n % i == 0) return 0;
 	}
@@ -79,7 +81,6 @@ int verificarPrimo(int n) {
 }
 
 void buscaSerial() {
-	printf("Iniciando busca serial \n");
 	total_primos_serial = 0;
 	for (int i = 0; i < MATRIZ_ALTURA; i++) {
 		for (int j = 0; j < MATRIZ_LARGURA; j++) {
@@ -102,14 +103,15 @@ void* runner() {
 
 		int linha_inicio = (bloco_autal / blocos_por_linhas) * BLOCO_ALTURA;
 		int coluna_inicio = (bloco_autal % blocos_por_linhas) * BLOCO_LARGURA;
-		int linha_fim = (linha_inicio + BLOCO_ALTURA > MATRIZ_ALTURA) ? MATRIZ_ALTURA : linha_inicio + BLOCO_ALTURA;
-		int coluna_fim = (coluna_inicio + BLOCO_LARGURA > MATRIZ_LARGURA) ? MATRIZ_LARGURA : coluna_inicio + BLOCO_LARGURA;
+		int linha_fim = linha_inicio + BLOCO_ALTURA;
+		int coluna_fim = coluna_inicio + BLOCO_LARGURA;
+
+		if (linha_fim > MATRIZ_ALTURA) linha_fim = MATRIZ_ALTURA;
+		if (coluna_fim > MATRIZ_LARGURA) coluna_fim = MATRIZ_LARGURA;
 
 		for (int i = linha_inicio; i < linha_fim; i++) {
 			for (int j = coluna_inicio; j < coluna_fim; j++) {
-				if (verificarPrimo(matriz[i][j])) {
-					primos_locais++;
-				}
+				if (verificarPrimo(matriz[i][j])) primos_locais++;
 			}
 		}
 	}
@@ -118,12 +120,10 @@ void* runner() {
 	total_primos_paralelo += primos_locais;
 	pthread_mutex_unlock(&mutex_total_primos);
 
-	pthread_exit(NULL);
+	return NULL;
 }
 
 void buscaParalela() {
-	printf("\n--- Iniciando Busca Paralela com %d Threads ---\n", NUM_THREADS);
-
 	total_primos_paralelo = 0;
 	proximo_bloco = 0;
 
@@ -149,7 +149,57 @@ void buscaParalela() {
 	pthread_mutex_destroy(&mutex_total_primos);
 }
 
+double executarTesteSerial() {
+	printf("Iniciando busca serial...\n");
+	clock_t inicio, fim;
+
+	inicio = clock();
+	buscaSerial();
+	fim = clock();
+
+	double tempo_gasto = ((double)(fim - inicio)) / CLOCKS_PER_SEC;
+
+	printf("\n--- Resultado da Busca Serial ---\n");
+	printf("Primos encontrados: %d\n", total_primos_serial);
+	printf("Tempo de execucao: %.4f segundos\n", tempo_gasto);
+
+	return tempo_gasto;
+}
+
+double executarTesteParalelo() {
+	printf("Iniciando busca paralela com %d threads...\n", NUM_THREADS);
+	clock_t inicio, fim;
+
+	inicio = clock();
+	buscaParalela();
+	fim = clock();
+
+	double tempo_gasto = ((double)(fim - inicio)) / CLOCKS_PER_SEC;
+
+	printf("\n--- Resultado da Busca Paralela ---\n");
+	printf("Primos encontrados: %d\n", total_primos_paralelo);
+	printf("Tempo de execucao: %.4f segundos\n", tempo_gasto);
+
+	return tempo_gasto;
+}
+
+void exibirMenu() {
+	printf("\n=== MENU DE TESTES ===\n");
+	printf("1. Busca Serial\n");
+	printf("2. Busca Paralela\n");
+	printf("3. Executar ambos os testes\n");
+	printf("4. Sair\n");
+	printf("Escolha uma opção: ");
+}
+
 int main() {
+	system("cls");
+	printf("=== SISTEMA DE BUSCA PARALELA DE NÚMEROS PRIMOS ===\n");
+	printf("Configuração:\n");
+	printf("- Matriz: %dx%d\n", MATRIZ_ALTURA, MATRIZ_LARGURA);
+	printf("- Macrobloco: %dx%d\n", BLOCO_ALTURA, BLOCO_LARGURA);
+	printf("- Threads: %d\n", NUM_THREADS);
+
 	matriz = alocarMatriz(MATRIZ_ALTURA, MATRIZ_LARGURA);
 	gerarMatrizAleatoria(matriz, MATRIZ_ALTURA, MATRIZ_LARGURA, SEMENTE);
 
@@ -158,36 +208,49 @@ int main() {
 	clock_t inicio, fim;
 	double tempo_serial, tempo_paralelo;
 
-	// Busca Serial
-	inicio = clock();
-	buscaSerial();
-	fim = clock();
-	tempo_serial = ((double)(fim - inicio)) / CLOCKS_PER_SEC;
-	printf("Busca Serial finalizada.\n");
-	printf("Primos encontrados: %d\n", total_primos_serial);
-	printf("Tempo de execucao: %.4f segundos\n", tempo_serial);
+	int opcao;
+	do {
+		exibirMenu();
 
-	// Busca Paralela
-	inicio = clock();
-	buscaParalela();
-	fim = clock();
-	tempo_paralelo = ((double)(fim - inicio)) / CLOCKS_PER_SEC;
-	printf("Busca Paralela finalizada.\n");
-	printf("Primos encontrados: %d\n", total_primos_paralelo);
-	printf("Tempo de execucao: %.4f segundos\n", tempo_paralelo);
+		char buffer_entrada[10];
+		if (fgets(buffer_entrada, sizeof(buffer_entrada), stdin) != NULL) {
+			opcao = atoi(buffer_entrada);
+		}
+		else {
+			opcao = 0;
+		}
 
-	// Analise de desempenho
-	printf("Analise de Desempenho\n");
-	if (total_primos_paralelo != total_primos_serial) {
-		printf("AVISO: A contagem de primos serial e paralela divergem! Verifique as secoes criticas.\n");
-	}
-	if (tempo_paralelo > 0) {
-		double speedup = tempo_serial / tempo_paralelo;
-		printf("Speedup: %.4fx\n", speedup);
-	}
-	else {
-		printf("Speedup: N/A (tempo paralelo foi zero)\n");
-	}
+		switch (opcao) {
+			case 1:
+				executarTesteSerial();
+				break;
+			case 2:
+				executarTesteParalelo();
+				break;
+			case 3:
+				tempo_serial = executarTesteSerial();
+				tempo_paralelo = executarTesteParalelo();
+
+				// Análise de desempenho
+				printf("\n--- Analise de Desempenho ---\n");
+				if (total_primos_paralelo != total_primos_serial) {
+					printf("AVISO: A contagem de primos serial e paralela divergem!\n");
+				}
+				if (tempo_paralelo > 0) {
+					double speedup = tempo_serial / tempo_paralelo;
+					printf("Speedup: %.4fx\n", speedup);
+				}
+				else {
+					printf("Speedup: N/A (tempo paralelo foi zero)\n");
+				}
+				break;
+			case 4:
+				printf("Encerrando programa...\n");
+				break;
+			default:
+				printf("Opção inválida!\n");
+		}
+	} while (opcao != 4);
 
 	liberarMatriz(matriz, MATRIZ_ALTURA);
 
