@@ -1,3 +1,6 @@
+#pragma once
+#define _CRT_SECURE_NO_WARNINGS 1
+#define _WINSOCK_DEPRECATED_NO_WARNINGS 1
 #define HAVE_STRUCT_TIMESPEC
 #pragma comment(lib, "pthreadVC2.lib")
 
@@ -11,8 +14,8 @@
 #define MATRIZ_ALTURA 10000
 #define MATRIZ_LARGURA 10000
 
-#define BLOCO_ALTURA 100
-#define BLOCO_LARGURA 100
+#define BLOCO_ALTURA 10000
+#define BLOCO_LARGURA 10000
 
 #define NUM_THREADS 12
 #define SEMENTE 25
@@ -92,7 +95,7 @@ void buscaSerial() {
 void* runner() {
 	int primos_locais = 0;
 	int bloco_autal;
-	int blocos_por_linhas = MATRIZ_LARGURA / BLOCO_LARGURA;
+	int blocos_por_linhas = (MATRIZ_LARGURA + BLOCO_LARGURA - 1) / BLOCO_LARGURA;
 
 	while (1) {
 		pthread_mutex_lock(&mutex_proximo_bloco);
@@ -203,7 +206,9 @@ int main() {
 	matriz = alocarMatriz(MATRIZ_ALTURA, MATRIZ_LARGURA);
 	gerarMatrizAleatoria(matriz, MATRIZ_ALTURA, MATRIZ_LARGURA, SEMENTE);
 
-	NUM_BLOCOS_TOTAL = (MATRIZ_ALTURA / BLOCO_ALTURA) * (MATRIZ_LARGURA / BLOCO_LARGURA);
+	int blocos_por_linha = (MATRIZ_LARGURA + BLOCO_LARGURA - 1) / BLOCO_LARGURA;
+	int blocos_por_coluna = (MATRIZ_ALTURA + BLOCO_ALTURA - 1) / BLOCO_ALTURA;
+	NUM_BLOCOS_TOTAL = blocos_por_linha * blocos_por_coluna;
 
 	clock_t inicio, fim;
 	double tempo_serial, tempo_paralelo;
